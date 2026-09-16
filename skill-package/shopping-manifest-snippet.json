@@ -1,0 +1,13 @@
+{
+  "privacyAndCompliance": {
+    "allowsPurchases": false,
+    "usesPersonalInfo": false,
+    "isChildDirected": false,
+    "isExportCompliant": true,
+    "containsAds": false,
+    "shoppingKit": {
+      "isShoppingActionsEnabled": true,
+      "isAmazonAssociatesOnAlexaEnabled": false
+    }
+  }
+}
