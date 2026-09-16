@@ -1,0 +1,104 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "shopping compass",
+      "intents": [
+        {
+          "name": "FindProductIntent",
+          "slots": [
+            {"name":"category","type":"PRODUCT_CATEGORY"},
+            {"name":"budget","type":"BUDGET_PREFERENCE"},
+            {"name":"priority","type":"SHOPPING_PRIORITY"},
+            {"name":"household","type":"SHOPPER_CONTEXT"}
+          ],
+          "samples": [
+            "help me choose {category}",
+            "find me {category}",
+            "recommend {category}",
+            "I need {category}",
+            "help me shop for {category}"
+          ]
+        },
+        {
+          "name": "BrowseCategoriesIntent",
+          "slots": [],
+          "samples": [
+            "what categories do you support",
+            "what can you help me shop for",
+            "show categories"
+          ]
+        },
+        {"name":"AMAZON.YesIntent","samples":[]},
+        {"name":"AMAZON.NoIntent","samples":[]},
+        {"name":"AMAZON.HelpIntent","samples":[]},
+        {"name":"AMAZON.CancelIntent","samples":[]},
+        {"name":"AMAZON.StopIntent","samples":[]},
+        {"name":"AMAZON.FallbackIntent","samples":[]}
+      ],
+      "types": [
+        {
+          "name": "PRODUCT_CATEGORY",
+          "values": [
+            {"name":{"value":"wireless earbuds","synonyms":["earbuds","headphones"]}},
+            {"name":{"value":"air fryers","synonyms":["air fryer"]}},
+            {"name":{"value":"robot vacuums","synonyms":["robot vacuum"]}},
+            {"name":{"value":"resistance bands","synonyms":["exercise bands"]}},
+            {"name":{"value":"LED strip lights","synonyms":["LED lights","strip lights"]}},
+            {"name":{"value":"tumblers","synonyms":["water bottles","water bottle","tumbler"]}}
+          ]
+        },
+        {
+          "name": "BUDGET_PREFERENCE",
+          "values": [
+            {"name":{"value":"budget","synonyms":["cheap","low cost","affordable"]}},
+            {"name":{"value":"mid range","synonyms":["middle","value"]}},
+            {"name":{"value":"premium","synonyms":["best","high end"]}}
+          ]
+        },
+        {
+          "name": "SHOPPING_PRIORITY",
+          "values": [
+            {"name":{"value":"battery","synonyms":["battery life"]}},
+            {"name":{"value":"noise cancelling","synonyms":["noise cancellation"]}},
+            {"name":{"value":"pet hair","synonyms":["pets"]}},
+            {"name":{"value":"smart home","synonyms":["Alexa support","voice control"]}},
+            {"name":{"value":"compact","synonyms":["small"]}},
+            {"name":{"value":"two foods","synonyms":["dual basket"]}},
+            {"name":{"value":"travel","synonyms":["portable"]}},
+            {"name":{"value":"workout","synonyms":["fitness"]}}
+          ]
+        },
+        {
+          "name": "SHOPPER_CONTEXT",
+          "values": [
+            {"name":{"value":"small household","synonyms":["one person","two people"]}},
+            {"name":{"value":"large household","synonyms":["family","five people","six people"]}},
+            {"name":{"value":"pets","synonyms":["pet household","dog","cat"]}},
+            {"name":{"value":"travel","synonyms":["commuting","on the go"]}}
+          ]
+        }
+      ]
+    },
+    "dialog": {
+      "intents": [
+        {
+          "name": "FindProductIntent",
+          "delegationStrategy": "SKILL_RESPONSE",
+          "prompts": {},
+          "slots": [
+            {"name":"category","type":"PRODUCT_CATEGORY","elicitationRequired":true,"confirmationRequired":false,"prompts":{"elicitation":"Elicit.Slot.category"}},
+            {"name":"budget","type":"BUDGET_PREFERENCE","elicitationRequired":true,"confirmationRequired":false,"prompts":{"elicitation":"Elicit.Slot.budget"}},
+            {"name":"priority","type":"SHOPPING_PRIORITY","elicitationRequired":true,"confirmationRequired":false,"prompts":{"elicitation":"Elicit.Slot.priority"}},
+            {"name":"household","type":"SHOPPER_CONTEXT","elicitationRequired":false,"confirmationRequired":false,"prompts":{"elicitation":"Elicit.Slot.household"}}
+          ]
+        }
+      ]
+    },
+    "prompts": [
+      {"id":"Elicit.Slot.category","variations":[{"type":"PlainText","value":"What are you shopping for?"}]},
+      {"id":"Elicit.Slot.budget","variations":[{"type":"PlainText","value":"Do you want budget, mid range, or premium?"}]},
+      {"id":"Elicit.Slot.priority","variations":[{"type":"PlainText","value":"What matters most to you?"}]},
+      {"id":"Elicit.Slot.household","variations":[{"type":"PlainText","value":"Who or what is this product for?"}]}
+    ]
+  }
+}
