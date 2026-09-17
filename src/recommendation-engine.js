@@ -29,41 +29,84 @@ function resolveCategory(value = '') {
   return CATEGORY_ALIASES[normalized] || null;
 }
 
+function requestedBudgetTier(budget = '') {
+  const value = normalize(budget);
+  if (!value) return null;
+  if (value.includes('budget') || value.includes('cheap') || value.includes('low')) return 'budget';
+  if (value.includes('premium') || value.includes('best') || value.includes('high end')) return 'premium';
+  if (value.includes('mid') || value.includes('middle') || value.includes('value')) return 'mid';
+  return null;
+}
+
+function traitMatches(traits = [], requested = '') {
+  const request = normalize(requested);
+  if (!request) return false;
+  return traits.some((trait) => {
+    const spaced = normalize(trait).replace(/-/g, ' ');
+    return request.includes(spaced) || spaced.includes(request);
+  });
+}
+
 function scoreProduct(product, { budget = '', priority = '', household = '' } = {}) {
   let score = 0;
-  const budgetNorm = normalize(budget);
-  const priorityNorm = normalize(priority);
-  const householdNorm = normalize(household);
+  const budgetTier = requestedBudgetTier(budget);
 
-  if (budgetNorm) {
-    if (budgetNorm.includes('budget') || budgetNorm.includes('cheap') || budgetNorm.includes('low')) {
-      if (product.priceTier === 'budget') score += 5;
-      if (product.priceTier === 'mid') score += 2;
-    } else if (budgetNorm.includes('premium') || budgetNorm.includes('best')) {
-      if (product.priceTier === 'premium') score += 5;
-      if (product.priceTier === 'mid') score += 2;
-    } else if (budgetNorm.includes('mid') || budgetNorm.includes('middle') || budgetNorm.includes('value')) {
-      if (product.priceTier === 'mid') score += 5;
-      if (product.priceTier === 'budget') score += 2;
-    }
+  if (budgetTier) {
+    if (product.priceTier === budgetTier) score += 5;
+    if (budgetTier === 'budget' && product.priceTier === 'mid') score += 2;
+    if (budgetTier === 'premium' && product.priceTier === 'mid') score += 2;
+    if (budgetTier === 'mid' && product.priceTier === 'budget') score += 2;
   }
 
-  for (const trait of product.traits || []) {
-    const spaced = trait.replace(/-/g, ' ');
-    if (priorityNorm && (priorityNorm.includes(spaced) || spaced.includes(priorityNorm))) score += 4;
-    if (householdNorm && (householdNorm.includes(spaced) || spaced.includes(householdNorm))) score += 3;
-  }
+  if (traitMatches(product.traits, priority)) score += 4;
+  if (traitMatches(product.traits, household)) score += 3;
 
   return score;
 }
 
-function buildReason(product, { budget, priority, household } = {}) {
-  const reasons = [];
-  if (budget) reasons.push(`it fits the ${normalize(budget)} preference`);
-  if (priority) reasons.push(`it best matches ${normalize(priority)}`);
-  if (household) reasons.push(`it aligns with ${normalize(household)}`);
-  if (!reasons.length) reasons.push(`it is a strong ${product.priceTier} option in this category`);
-  return reasons.join(', ');
+function evaluateCriteria(product, { budget = '', priority = '', household = '' } = {}) {
+  const requested = [];
+  const matched = [];
+  const unmatched = [];
+  const budgetTier = requestedBudgetTier(budget);
+
+  if (budget) {
+    const item = { kind: 'budget', requested: normalize(budget), matched: Boolean(budgetTier && product.priceTier === budgetTier) };
+    requested.push(item);
+    (item.matched ? matched : unmatched).push(item);
+  }
+
+  if (priority) {
+    const item = { kind: 'priority', requested: normalize(priority), matched: traitMatches(product.traits, priority) };
+    requested.push(item);
+    (item.matched ? matched : unmatched).push(item);
+  }
+
+  if (household) {
+    const item = { kind: 'household', requested: normalize(household), matched: traitMatches(product.traits, household) };
+    requested.push(item);
+    (item.matched ? matched : unmatched).push(item);
+  }
+
+  return { requested, matched, unmatched };
+}
+
+function buildReason(product, criteria) {
+  const { matched, unmatched } = evaluateCriteria(product, criteria);
+  const reasons = matched.map((item) => {
+    if (item.kind === 'budget') return `it matches your ${item.requested} preference`;
+    if (item.kind === 'priority') return `it matches ${item.requested}`;
+    return `it matches ${item.requested}`;
+  });
+
+  if (reasons.length && !unmatched.length) return reasons.join(', ');
+  if (reasons.length && unmatched.length) {
+    return `${reasons.join(', ')}, and it is the closest available catalog option for the remaining preferences`;
+  }
+  if (unmatched.length) {
+    return `it is the closest available ${product.priceTier} catalog option, but it does not exactly match every requested preference`;
+  }
+  return `it is a strong ${product.priceTier} option in this category`;
 }
 
 function recommend({ category, budget, priority, household } = {}) {
@@ -79,12 +122,14 @@ function recommend({ category, budget, priority, household } = {}) {
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 
   const winner = ranked[0];
+  const criteria = { budget, priority, household };
   return {
     categoryKey,
     categoryName: categoryData.displayName,
     product: winner,
     alternatives: ranked.slice(1, 3),
-    reason: buildReason(winner, { budget, priority, household }),
+    reason: buildReason(winner, criteria),
+    criteria: evaluateCriteria(winner, criteria),
   };
 }
 
@@ -92,4 +137,13 @@ function listCategories() {
   return Object.entries(catalog).map(([key, value]) => ({ key, displayName: value.displayName }));
 }
 
-module.exports = { resolveCategory, scoreProduct, recommend, listCategories };
+module.exports = {
+  resolveCategory,
+  requestedBudgetTier,
+  traitMatches,
+  scoreProduct,
+  evaluateCriteria,
+  buildReason,
+  recommend,
+  listCategories,
+};
