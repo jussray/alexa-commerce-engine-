@@ -6,13 +6,13 @@
   "main": "src/index.js",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/index.js && node --check src/catalog.js && node --check src/recommendation-engine.js && node --check src/shopping-actions.js",
+    "check": "node --check src/index.js && node --check src/catalog.js && node --check src/recommendation-engine.js && node --check src/shopping-actions.js && node --check src/security.js && node --check src/metrics.js",
     "verify": "npm run check && npm test"
   },
   "dependencies": {
-    "ask-sdk-core": "^2.14.0"
+    "ask-sdk-core": "2.14.0"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=24"
   }
 }
