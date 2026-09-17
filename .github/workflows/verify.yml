@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   node:
     runs-on: ubuntu-latest
@@ -12,5 +15,54 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm install
-      - run: npm run verify
+
+      - name: Resolve deterministic dependency lock
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Install from generated lock
+        run: npm ci
+
+      - name: Verify source and tests
+        run: npm run verify
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Build Lambda package
+        run: |
+          set -euo pipefail
+          mkdir -p build/package
+          cp -R src build/package/src
+          cp package.json package-lock.json build/package/
+          cp -R node_modules build/package/node_modules
+          (cd build/package && zip -qr ../lambda.zip .)
+          unzip -Z1 build/lambda.zip | sort > build/package-entries.txt
+
+      - name: Inspect package for sensitive or internal files
+        run: |
+          set -euo pipefail
+          if grep -E '(^|/)(\.git(/|$)|\.env($|[./])|credentials?($|[./]))' build/package-entries.txt; then
+            echo 'Forbidden internal or credential-shaped path found in Lambda package.' >&2
+            exit 1
+          fi
+          if grep -RIEq '(AKIA[0-9A-Z]{16}|sk-[A-Za-z0-9_-]{20,}|ANTHROPIC_API_KEY[[:space:]]*=|OPENAI_API_KEY[[:space:]]*=|AMAZON_ASSOCIATES_ID[[:space:]]*=|AMAZON_TRACKING_ID[[:space:]]*=)' src package.json package-lock.json; then
+            echo 'Credential-shaped material found in project-owned package content.' >&2
+            exit 1
+          fi
+
+      - name: Fresh-unzip runtime smoke
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/alexa-commerce-lambda
+          mkdir -p /tmp/alexa-commerce-lambda
+          unzip -q build/lambda.zip -d /tmp/alexa-commerce-lambda
+          node -e "const mod=require('/tmp/alexa-commerce-lambda/src/index.js'); if(typeof mod.handler!=='function') process.exit(1)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alexa-commerce-engine-${{ github.sha }}
+          path: |
+            build/lambda.zip
+            build/package-entries.txt
+            package-lock.json
+          if-no-files-found: error
