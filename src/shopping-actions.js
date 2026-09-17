@@ -54,10 +54,26 @@ function addToCartDirective(product, token, env = process.env) {
   };
 }
 
+function interpretShoppingResult(cause = {}, expectedToken = '') {
+  const actualToken = String(cause.token || '');
+  const expected = String(expectedToken || '');
+  const statusCode = String(cause.status?.code || '');
+  const resultCode = cause.result?.code || null;
+
+  if (!expected || !actualToken || actualToken !== expected) {
+    return { status: 'continuity_mismatch', statusCode, resultCode };
+  }
+  if (statusCode === '200' && !cause.result) {
+    return { status: 'success', statusCode, resultCode: null };
+  }
+  return { status: 'provider_error', statusCode, resultCode };
+}
+
 module.exports = {
   associatesConfig,
   validateAsin,
   productEntity,
   validateToken,
   addToCartDirective,
+  interpretShoppingResult,
 };
