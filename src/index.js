@@ -1,12 +1,15 @@
 const Alexa = require('ask-sdk-core');
 const { recommend, listCategories } = require('./recommendation-engine');
-const { addToCartDirective } = require('./shopping-actions');
-
-const associatesEnabled = () => process.env.ASSOCIATES_ENABLED === 'true';
+const {
+  addToCartDirective,
+  associatesConfig,
+  interpretShoppingResult,
+} = require('./shopping-actions');
+const { redactString, safeError } = require('./security');
 
 function disclosure() {
-  return associatesEnabled()
-    ? 'This skill earns from qualifying purchases. '
+  return associatesConfig().enabled
+    ? 'Shopping Compass earns from qualifying purchases that you make while using this skill. '
     : '';
 }
 
@@ -15,10 +18,14 @@ function slotValue(handlerInput, slotName) {
 }
 
 function event(name, payload = {}) {
+  const safePayload = Object.fromEntries(Object.entries(payload).map(([key, value]) => [
+    key,
+    typeof value === 'string' ? redactString(value) : value,
+  ]));
   console.log(JSON.stringify({
-    event: name,
+    event: redactString(name),
     at: new Date().toISOString(),
-    ...payload,
+    ...safePayload,
   }));
 }
 
@@ -85,6 +92,7 @@ const FindProductIntentHandler = {
       productKey: result.product.key,
       asin: result.product.asin,
       priceTier: result.product.priceTier,
+      metric_name: 'recommendations',
     });
 
     return handlerInput.responseBuilder
@@ -112,12 +120,16 @@ const YesIntentHandler = {
         .getResponse();
     }
 
+    const config = associatesConfig();
     const token = `add-to-cart:${result.categoryKey}:${result.product.key}`;
+    const directive = addToCartDirective(result.product, token);
+
     event('cart_handoff_started', {
       category: result.categoryKey,
       productKey: result.product.key,
       asin: result.product.asin,
-      associatesEnabled: associatesEnabled(),
+      associatesEnabled: config.enabled,
+      metric_name: 'cart_handoffs',
     });
 
     attrs.awaitingCartConfirmation = false;
@@ -126,7 +138,7 @@ const YesIntentHandler = {
 
     return handlerInput.responseBuilder
       .speak('Opening the Amazon cart step.')
-      .addDirective(addToCartDirective(result.product, token))
+      .addDirective(directive)
       .getResponse();
   },
 };
@@ -157,19 +169,38 @@ const SessionResumedRequestHandler = {
   },
   handle(handlerInput) {
     const cause = handlerInput.requestEnvelope.request.cause || {};
-    const result = cause.result || null;
-    const statusCode = cause.status?.code || null;
+    const attrs = handlerInput.attributesManager.getSessionAttributes();
+    const verdict = interpretShoppingResult(cause, attrs.lastShoppingToken);
 
     event('shopping_action_resumed', {
-      token: cause.token || null,
-      statusCode,
-      resultCode: result?.code || null,
+      status: verdict.status,
+      statusCode: verdict.statusCode,
+      resultCode: verdict.resultCode,
+      category: attrs.recommendation?.categoryKey || null,
+      productKey: attrs.recommendation?.product?.key || null,
+      metric_name: verdict.status === 'success' ? 'cart_conversions' : null,
     });
 
-    if (statusCode === '200' && !result) {
+    delete attrs.lastShoppingToken;
+    handlerInput.attributesManager.setSessionAttributes(attrs);
+
+    if (verdict.status === 'success') {
       return handlerInput.responseBuilder
         .speak('Amazon finished the cart step. You can ask me to compare another product.')
         .reprompt('What else are you shopping for?')
+        .getResponse();
+    }
+
+    if (verdict.status === 'attribution_error') {
+      return handlerInput.responseBuilder
+        .speak('Amazon returned from the cart step, but this skill could not verify commission attribution. You can ask me to compare another product.')
+        .reprompt('What else are you shopping for?')
+        .getResponse();
+    }
+
+    if (verdict.status === 'continuity_mismatch') {
+      return handlerInput.responseBuilder
+        .speak('I could not verify that shopping result against the recommendation that started it, so I will not treat it as a successful cart event.')
         .getResponse();
     }
 
@@ -220,7 +251,7 @@ const FallbackIntentHandler = {
 const ErrorHandler = {
   canHandle() { return true; },
   handle(handlerInput, error) {
-    console.error(error);
+    console.error(JSON.stringify({ event: 'handler_error', ...safeError(error) }));
     return handlerInput.responseBuilder
       .speak('Something went wrong. Please try again.')
       .getResponse();
