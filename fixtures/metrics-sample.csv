@@ -1,0 +1,5 @@
+source_record_id,source,occurred_at,imported_at,account_id,surface_id,audience_segment,metric_name,unit,value,category,product_key,asin,provenance
+alexa-001,alexa_skill_metrics,2026-09-15T12:00:00.000Z,2026-09-16T12:00:00.000Z,alexa-dev-account,shopping-compass,all,recommendations,count,100,air-fryers,,,Alexa Developer Console sample export
+alexa-002,alexa_skill_metrics,2026-09-15T12:00:00.000Z,2026-09-16T12:00:00.000Z,alexa-dev-account,shopping-compass,all,cart_conversions,count,25,air-fryers,,,Alexa Developer Console sample export
+assoc-001,amazon_associates,2026-09-15T12:00:00.000Z,2026-09-16T12:00:00.000Z,associates-account,shopping-compass,all,qualifying_purchases,count,8,air-fryers,,,Associates safe sample export
+assoc-002,amazon_associates,2026-09-15T12:00:00.000Z,2026-09-16T12:00:00.000Z,associates-account,shopping-compass,all,commission_amount,usd,11.40,air-fryers,,,Associates safe sample export
