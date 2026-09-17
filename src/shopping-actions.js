@@ -63,6 +63,9 @@ function interpretShoppingResult(cause = {}, expectedToken = '') {
   if (!expected || !actualToken || actualToken !== expected) {
     return { status: 'continuity_mismatch', statusCode, resultCode };
   }
+  if (resultCode === 'AlexaShopping.AssociatesInvalidInputError') {
+    return { status: 'attribution_error', statusCode, resultCode };
+  }
   if (statusCode === '200' && !cause.result) {
     return { status: 'success', statusCode, resultCode: null };
   }
