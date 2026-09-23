@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shopping Compass · Alexa+ MCP Demo</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #25145a 0, #0d0b18 44%, #08070e 100%); color: #f7f5ff; }
+    main { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 48px 0 72px; }
+    .eyebrow { display: inline-flex; gap: 8px; align-items: center; padding: 7px 10px; border: 1px solid #51427b; border-radius: 999px; color: #cfc7ff; font-size: 13px; }
+    h1 { margin: 18px 0 8px; font-size: clamp(38px, 7vw, 72px); line-height: .96; letter-spacing: -0.05em; }
+    .lede { max-width: 720px; color: #bbb3d6; font-size: 18px; line-height: 1.55; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
+    .card { border: 1px solid #2d2740; background: rgba(18, 15, 30, .78); border-radius: 24px; padding: 22px; box-shadow: 0 20px 70px rgba(0,0,0,.24); }
+    label { display: grid; gap: 8px; color: #d8d1ef; font-size: 14px; }
+    input, select { width: 100%; border: 1px solid #413854; border-radius: 14px; padding: 13px 14px; background: #0b0912; color: #fff; font: inherit; }
+    button { border: 0; border-radius: 14px; padding: 14px 18px; font: inherit; font-weight: 700; cursor: pointer; background: #e8ddff; color: #1a1032; }
+    button.secondary { background: #2a2140; color: #eee8ff; }
+    button:disabled { opacity: .5; cursor: wait; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+    .result { margin-top: 24px; display: none; }
+    .result.show { display: block; }
+    .pill { display: inline-flex; padding: 5px 8px; border-radius: 999px; background: #221a35; color: #b8adff; font-size: 12px; }
+    .product { font-size: 28px; margin: 10px 0 4px; }
+    .reason { color: #c7bfdc; line-height: 1.55; }
+    .truth { margin-top: 14px; display: grid; gap: 8px; font-size: 14px; color: #a9a1bd; }
+    pre { white-space: pre-wrap; word-break: break-word; background: #08070d; border: 1px solid #292338; border-radius: 14px; padding: 14px; color: #c9c1e2; overflow: auto; }
+    .status { margin-top: 18px; color: #8f86a8; font-size: 13px; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } main { padding-top: 28px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="eyebrow">Alexa+ · MCP Streamable HTTP · 2025-11-25+</span>
+    <h1>Shopping Compass</h1>
+    <p class="lede">A voice-first commerce engine that recommends from explicit shopper constraints, exposes what matched and what did not, and keeps the final Amazon cart boundary truthful.</p>
+
+    <section class="card" aria-labelledby="shop-title">
+      <h2 id="shop-title">What are you shopping for?</h2>
+      <div class="grid">
+        <label>Category
+          <select id="category">
+            <option value="wireless earbuds">Wireless earbuds</option>
+            <option value="air fryers">Air fryers</option>
+            <option value="robot vacuums">Robot vacuums</option>
+            <option value="resistance bands">Resistance bands</option>
+            <option value="led strip lights">LED strip lights</option>
+            <option value="water bottles">Tumblers / water bottles</option>
+          </select>
+        </label>
+        <label>Budget
+          <select id="budget">
+            <option value="budget">Budget</option>
+            <option value="mid">Mid-range</option>
+            <option value="premium">Premium</option>
+          </select>
+        </label>
+        <label>What matters most?
+          <input id="priority" value="battery" placeholder="battery, quiet, durability…" />
+        </label>
+        <label>Who or what is it for?
+          <input id="household" value="family" placeholder="family, travel, apartment…" />
+        </label>
+      </div>
+      <div class="actions">
+        <button id="recommend">Find my best match</button>
+      </div>
+      <div id="status" class="status" role="status">Connecting to the local MCP endpoint…</div>
+    </section>
+
+    <section id="result" class="card result" aria-live="polite">
+      <span class="pill">Verified by MCP tool call</span>
+      <h2 id="product" class="product"></h2>
+      <div id="reason" class="reason"></div>
+      <div id="truth" class="truth"></div>
+      <div class="actions">
+        <button id="handoff" class="secondary">Confirm & prepare Amazon handoff</button>
+      </div>
+      <pre id="proof" hidden></pre>
+    </section>
+  </main>
+
+  <script>
+    const protocolVersion = '2025-11-25';
+    const state = { input: null };
+
+    function parseMcpPayload(text, contentType) {
+      if (contentType.includes('text/event-stream')) {
+        const line = text.split('\n').find(item => item.startsWith('data:'));
+        if (!line) throw new Error('MCP response did not contain a data event.');
+        return JSON.parse(line.slice(5).trim());
+      }
+      return JSON.parse(text);
+    }
+
+    async function callTool(name, args) {
+      const response = await fetch('/mcp', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'accept': 'application/json, text/event-stream',
+          'mcp-protocol-version': protocolVersion,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: crypto.randomUUID(),
+          method: 'tools/call',
+          params: { name, arguments: args },
+        }),
+      });
+      const text = await response.text();
+      const payload = parseMcpPayload(text, response.headers.get('content-type') || '');
+      if (!response.ok || payload.error) throw new Error(payload.error?.message || `MCP HTTP ${response.status}`);
+      if (payload.result?.isError) throw new Error(payload.result.content?.[0]?.text || 'MCP tool failed');
+      return payload.result?.structuredContent || JSON.parse(payload.result?.content?.[0]?.text || '{}');
+    }
+
+    async function health() {
+      try {
+        const response = await fetch('/health');
+        const data = await response.json();
+        document.getElementById('status').textContent = data.ok
+          ? `MCP endpoint ready · minimum ${data.mcpMinimum} · server ${data.serverVersion}`
+          : 'MCP endpoint unavailable';
+      } catch {
+        document.getElementById('status').textContent = 'MCP endpoint unavailable';
+      }
+    }
+
+    document.getElementById('recommend').addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      document.getElementById('status').textContent = 'Asking the MCP commerce engine…';
+      try {
+        const input = {
+          category: document.getElementById('category').value,
+          budget: document.getElementById('budget').value,
+          priority: document.getElementById('priority').value,
+          household: document.getElementById('household').value,
+        };
+        state.input = input;
+        const data = await callTool('recommend_product', input);
+        const rec = data.recommendation;
+        document.getElementById('product').textContent = rec.product.name;
+        document.getElementById('reason').textContent = `Why: ${rec.reason}.`;
+        document.getElementById('truth').innerHTML = `
+          <div>Matched criteria: <strong>${rec.criteria.matched.length}</strong></div>
+          <div>Unmatched criteria: <strong>${rec.criteria.unmatched.length}</strong></div>
+          <div>Purchase claimed: <strong>${data.proof.purchaseClaimed}</strong></div>
+          <div>Commission claimed: <strong>${data.proof.commissionClaimed}</strong></div>`;
+        document.getElementById('proof').hidden = true;
+        document.getElementById('result').classList.add('show');
+        document.getElementById('status').textContent = 'Recommendation returned through MCP.';
+      } catch (error) {
+        document.getElementById('status').textContent = `Error: ${error.message}`;
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById('handoff').addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        const data = await callTool('prepare_amazon_cart_handoff', { ...state.input, confirmed: true });
+        const proof = document.getElementById('proof');
+        proof.textContent = JSON.stringify(data, null, 2);
+        proof.hidden = false;
+        document.getElementById('status').textContent = 'Handoff prepared. Amazon still controls the final cart and purchase.';
+      } catch (error) {
+        document.getElementById('status').textContent = `Error: ${error.message}`;
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    health();
+  </script>
+</body>
+</html>

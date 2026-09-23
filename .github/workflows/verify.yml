@@ -22,11 +22,30 @@ jobs:
       - name: Install from generated lock
         run: npm ci
 
-      - name: Verify source and tests
+      - name: Verify source, unit, and MCP protocol tests
         run: npm run verify
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify judge flow with Playwright
+        run: npm run test:e2e
+
+      - name: Upload browser proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alexa-commerce-browser-proof-${{ github.sha }}
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: warn
+
+      - name: Remove development-only dependencies before Lambda packaging
+        run: npm prune --omit=dev
 
       - name: Build Lambda package
         run: |
@@ -50,7 +69,7 @@ jobs:
             exit 1
           fi
 
-      - name: Fresh-unzip runtime smoke
+      - name: Fresh-unzip classic Alexa Lambda smoke
         run: |
           set -euo pipefail
           rm -rf /tmp/alexa-commerce-lambda

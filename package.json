@@ -1,16 +1,25 @@
 {
   "name": "alexa-commerce-engine",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Multi-category Alexa Shopping Kit commerce engine with data-driven product recommendations and money-proof boundaries.",
+  "description": "Alexa+ MCP commerce engine with transparent recommendations, purchasing handoff boundaries, and proof receipts.",
   "main": "src/index.js",
   "scripts": {
+    "start": "node src/mcp-server.js",
+    "start:mcp": "node src/mcp-server.js",
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/index.js && node --check src/catalog.js && node --check src/recommendation-engine.js && node --check src/shopping-actions.js && node --check src/security.js && node --check src/metrics.js",
+    "test:e2e": "playwright test",
+    "check": "node --check src/index.js && node --check src/catalog.js && node --check src/recommendation-engine.js && node --check src/shopping-actions.js && node --check src/security.js && node --check src/metrics.js && node --check src/mcp-server.js",
     "verify": "npm run check && npm test"
   },
   "dependencies": {
-    "ask-sdk-core": "2.14.0"
+    "@modelcontextprotocol/node": "2.0.0",
+    "@modelcontextprotocol/server": "2.0.0",
+    "ask-sdk-core": "2.14.0",
+    "zod": "4.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
   },
   "engines": {
     "node": ">=24"
