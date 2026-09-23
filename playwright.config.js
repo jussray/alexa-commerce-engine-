@@ -9,6 +9,7 @@ module.exports = defineConfig({
     baseURL: 'http://127.0.0.1:3000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    video: 'on',
   },
   webServer: {
     command: 'node src/mcp-server.js',
