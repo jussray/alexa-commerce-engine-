@@ -5,38 +5,59 @@ Date: 2026-09-23
 ## Authority
 - Repository: `jussray/alexa-commerce-engine-`
 - Default branch: `main`
-- Main audited SHA: `f23323a684335aa8108abc9bc2ecff5b63eb22d3`
-- Existing hardening branch: `fix/audit-truth-metrics`
-- Hardening branch audited SHA before this receipt: `b73b3bc718459864e2427ece484a32b98fc2f1ed`
+- Working branch: `fix/audit-truth-metrics`
+- Main baseline audited SHA: `f23323a684335aa8108abc9bc2ecff5b63eb22d3`
+- Pre-launch hardening SHA: `b73b3bc718459864e2427ece484a32b98fc2f1ed`
+- Alexa+ launch implementation SHA: `b77d751123dccc5aff639dfa6c2c0be0296c63a3`
 
 ## Goal
 Make the Alexa Commerce Engine eligible, demoable, and competitive for the 2026 Amazon Developer Hackathon Alexa+ track without discarding the existing recommendation, shopping-boundary, truth-metrics, or security work.
 
 ## VERIFIED
-- The repo currently implements an Alexa Skills Kit / Shopping Kit custom-skill flow using `ask-sdk-core`.
-- The existing hardening branch adds recommendation-truth handling, security/redaction, metrics, stronger shopping-result continuity, tests, and CI artifact checks.
-- The hardening branch CI is green at the pre-receipt audited head.
-- The current repository does not contain an Alexa+ MCP server, Agent Skill runtime, or web-based simulated Alexa+ experience.
-- The project already contains reusable commerce logic that should be preserved rather than rewritten.
+- The existing classic Alexa Skills Kit / Shopping Kit adapter remains intact in `src/index.js`.
+- The launch branch now contains a self-hosted MCP server in `src/mcp-server.js` using the official Model Context Protocol server + Node packages.
+- `/mcp` serves the commerce tools over Streamable HTTP and supports the Alexa+ minimum MCP `2025-11-25` path.
+- The MCP surface exposes `list_categories`, `recommend_product`, and `prepare_amazon_cart_handoff`.
+- The recommendation tool exposes matched/unmatched criteria and does not claim purchase or commission.
+- The handoff tool requires explicit shopper confirmation and truthfully reports that the MCP server itself did not execute the final Amazon purchase.
+- `public/index.html` is a judge-facing simulator that exercises the real `/mcp` tool path rather than a parallel fake recommendation API.
+- `docs/HACKATHON_SUBMISSION.md` contains judge instructions, architecture, demo script, technical challenges, and truthful submission language.
+- CI run `35932297275` completed successfully at exact implementation SHA `b77d751123dccc5aff639dfa6c2c0be0296c63a3`.
+- The successful CI run includes source/unit/MCP protocol checks, production dependency audit, Playwright Chromium judge-flow verification, browser-proof artifact upload, leak checks, Lambda packaging, and fresh-unzip classic Alexa runtime smoke.
+- CI produced browser proof artifact `alexa-commerce-browser-proof-b77d751123dccc5aff639dfa6c2c0be0296c63a3` and build artifact `alexa-commerce-engine-b77d751123dccc5aff639dfa6c2c0be0296c63a3`.
 
-## PRIMARY BLOCKER
-The current runtime adapter is a classic Alexa custom skill. The Alexa+ hackathon track requires a working Agent Skill or self-hosted MCP server implementing MCP 2025-11-25+ over Streamable HTTP, or an explicitly simulated Alexa+ experience. Therefore the current repo needs an Alexa+ submission adapter before it should be treated as launch-ready for this hackathon.
+## FIX
+- Added Alexa+ MCP runtime adapter without replacing the proven commerce core.
+- Added a browser simulator and real MCP browser path.
+- Added MCP protocol tests including `2025-11-25` initialization and tool calls.
+- Added Playwright end-to-end judge-flow proof.
+- Added launch/submission documentation.
+- Hardened CI so browser proof and a reproducible runtime artifact are generated on each exact head.
 
-## INFERRED
-The lowest-risk path is to preserve the existing catalog, recommendation engine, truth metrics, shopping boundaries, and tests, then add a Streamable HTTP MCP server plus a small judge-facing web simulator for the same commerce workflow. This avoids rewriting the proven core while satisfying the Alexa+ runtime/demo requirement.
+## PROOF
+- Workflow run: `35932297275` — success.
+- Exact implementation head: `b77d751123dccc5aff639dfa6c2c0be0296c63a3`.
+- Playwright judge flow: success.
+- MCP protocol/unit verification: success.
+- Production dependency audit: success.
+- Secret/leak package inspection: success.
+- Fresh-unzip classic Alexa Lambda runtime smoke: success.
+- Browser proof artifact digest: `sha256:33cd143726d2977e43c124b433fceb417ab916711f9aa2b58d3d5a62ffe1a694`.
+- Build artifact digest: `sha256:f215963fa35aed4f4fbd973dfff071462bad275ff5be6c441c4ea9eb68c7fb2c`.
 
 ## UNKNOWN
-- Whether Amazon/Devpost reviewer collaborators are currently configured on the private repo.
-- Whether a Devpost draft, product-feedback response, friction log, demo video, or judge instructions exist outside this repository.
-- Whether any unpushed Claude/Cowork work exists locally.
+- Whether the required Amazon/Devpost reviewer collaborators are currently configured on the private repo.
+- Whether the Devpost submission draft, product-feedback answers, and final under-three-minute demo video are complete outside this repository.
+- Whether a public deployment is desired. The hackathon FAQ says a locally runnable repo plus demo video is acceptable, so hosting is not required for eligibility.
 
 ## RISK
-- Merging the hardening branch by itself would improve the classic skill but would not fix the Alexa+ track eligibility gap.
-- The existing `Connections.StartConnection` Shopping Kit handoff should not be assumed to be a valid Alexa+ MCP purchasing primitive.
-- A repository-green result is not sufficient proof of the Alexa+ judge path.
+- `prepare_amazon_cart_handoff` intentionally prepares the boundary but does not claim that the MCP server can complete an Amazon purchase. A production provider-authorized purchase adapter remains separate work.
+- The repository is private, so judge access must be verified before submission.
+- Submission packaging outside GitHub can still block launch even though the repository path is green.
 
 ## ROLLBACK
-All launch work should stay on the existing `fix/audit-truth-metrics` branch until MCP/runtime/browser proof is green. The branch can be reset to `b73b3bc718459864e2427ece484a32b98fc2f1ed` if the launch adapter needs to be abandoned.
+- Before merge, reset `fix/audit-truth-metrics` to `b73b3bc718459864e2427ece484a32b98fc2f1ed` to remove the Alexa+ launch adapter while retaining the earlier hardening work.
+- After a fast-forward merge, move `main` back to `f23323a684335aa8108abc9bc2ecff5b63eb22d3` only if the entire hardening + launch sequence must be reversed.
 
 ## NEXT GATE
-Add the Alexa+ Streamable HTTP MCP adapter on the existing branch, reuse the existing commerce core, add judge-facing simulator + focused MCP tests + Playwright evidence, then merge only after exact-head CI and real-path proof are green.
+Run exact-head CI for this receipt-only commit, then fast-forward `main` only if it remains green. After merge, the remaining launch gates are judge-repository access plus the Devpost submission/video package.
