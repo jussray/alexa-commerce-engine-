@@ -45,7 +45,7 @@ The fastest path was starting from the open MCP specification and building a loc
 Yes. MCP is a strong fit for modular commerce because it separates the conversational client from deterministic commerce capabilities and allows the same core to support additional categories without creating one-off skills. I would use the Alexa developer ecosystem again, especially with a stronger local Alexa+ testing path that makes protocol, authorization, and purchasing boundaries easier to inspect before production access.
 
 ## Demo video
-A 50-second final demo asset has been generated from the exact Playwright-proven judge flow. It still needs to be uploaded publicly to YouTube or Vimeo because the Devpost form accepts those platforms for the required video URL.
+Current-head browser proof is verified at `main@68b27042c0e50dc8b5dcc6b7d236aabd380a0a95` by GitHub Actions run `36208071058`: the Playwright judge-flow step passed and produced artifact `alexa-commerce-browser-proof-68b27042c0e50dc8b5dcc6b7d236aabd380a0a95` (SHA-256 `d105f54d2c10c8cfb026ddcc9f1f39f259960e5c847b82532552c09d82399baf`). The retained Playwright recording is approximately 1.68 seconds and is browser-proof evidence, not the required public submission demo. A separate public YouTube or Vimeo demo URL still needs to be produced and attached before the Devpost video requirement is satisfied.
 
 ## Reviewer access gate
 Because the repository is private, the required Amazon reviewers and Devpost testing access must be granted before final submission. Current live permission checks showed no access for the six required Amazon GitHub reviewer accounts at audit time.
